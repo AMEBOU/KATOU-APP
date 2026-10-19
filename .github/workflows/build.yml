@@ -21,6 +21,9 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Générer la structure Android
+        run: flutter create . --platforms=android --org com.katou.app
+
       - name: Télécharger les dépendances
         run: flutter pub get
 
