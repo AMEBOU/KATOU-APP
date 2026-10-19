@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const String kApiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.2:3000');
 
-const _offlineMsg = 'Le serveur ne répond pas. Vérifiez la connexion internet (Wi-Fi ou données mobiles).';
+const _offlineMsg = 'Le serveur ne répond pas. Vérifiez la connexion internet.';
 final _hashRe = RegExp(r'^[a-f0-9]{64}$');
 const _cooldown = Duration(seconds: 4);
 
@@ -145,23 +145,38 @@ class Root extends StatefulWidget {
 }
 
 class _RootState extends State<Root> {
-  SharedPreferences? _prefs;
   String? _token;
   String _name = '';
+  bool _loadingPrefs = true;
 
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((p) => setState(() {
-          _prefs = p;
-          _token = p.getString('token');
-          _name = p.getString('name') ?? '';
-        }));
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _token = p.getString('token');
+        _name = p.getString('name') ?? '';
+        _loadingPrefs = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingPrefs = false);
+    }
   }
 
   Future<void> _onLogin(String token, String name) async {
-    await _prefs!.setString('token', token);
-    await _prefs!.setString('name', name);
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('token', token);
+      await p.setString('name', name);
+    } catch (_) {}
+    if (!mounted) return;
     setState(() {
       _token = token;
       _name = name;
@@ -169,13 +184,19 @@ class _RootState extends State<Root> {
   }
 
   Future<void> _logout() async {
-    await _prefs?.remove('token');
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.remove('token');
+    } catch (_) {}
+    if (!mounted) return;
     setState(() => _token = null);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_prefs == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loadingPrefs) {
+      return const Scaffold(body: Center(child: Text('Chargement de KATOU...', style: TextStyle(fontSize: 16))));
+    }
     if (_token == null) return LoginPage(onLogin: _onLogin);
     return ScannerPage(key: ValueKey(_token), token: _token!, name: _name, onLogout: _logout);
   }
@@ -245,7 +266,6 @@ class _LoginPageState extends State<LoginPage> {
                   TextField(
                     controller: _phone,
                     keyboardType: TextInputType.phone,
-                    autofillHints: const [AutofillHints.telephoneNumber],
                     decoration: const InputDecoration(labelText: 'Téléphone', hintText: '90 12 34 56', border: OutlineInputBorder()),
                   ),
                   const SizedBox(height: 12),
@@ -342,7 +362,7 @@ class _ScannerPageState extends State<ScannerPage> {
     setState(() => _result = r);
   }
 
-  void _reset() {
+    void _reset() {
     _auto?.cancel();
     if (!mounted) return;
     setState(() {
@@ -365,7 +385,7 @@ class _ScannerPageState extends State<ScannerPage> {
           errorBuilder: (context, error, child) => const Center(
               child: Padding(
                   padding: EdgeInsets.all(32),
-                  child: Text("Caméra indisponible.\nAutorisez l'accès à la caméra dans les réglages du téléphone.",
+                  child: Text("Caméra indisponible.\nAutorisez l'accès à la caméra dans les réglages.",
                       textAlign: TextAlign.center, style: TextStyle(fontSize: 18)))),
         ),
         IgnorePointer(
@@ -417,8 +437,6 @@ class _ScannerPageState extends State<ScannerPage> {
     );
   }
 }
-
-// ───────────────────────────── Écran de résultat ─────────────────────────────
 
 class ResultView extends StatelessWidget {
   const ResultView({super.key, required this.result, required this.onNext, this.onRetry});
