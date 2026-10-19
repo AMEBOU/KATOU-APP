@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String kApiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.2:3000');
+const String kApiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://katou-app-production.up.railway.app');
 
 const _offlineMsg = 'Le serveur ne répond pas. Vérifiez la connexion internet.';
 final _hashRe = RegExp(r'^[a-f0-9]{64}$');
